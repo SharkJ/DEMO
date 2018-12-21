@@ -1,0 +1,735 @@
+grammar io.typefox.xtext.langserver.example.MyDsl with org.eclipse.xtext.common.Terminals
+
+generate myDsl "http://www.typefox.io/xtext/langserver/example/MyDsl"
+
+//Use the below code to have 'projection' first and the rest of the keyword suggestions next
+
+Domainmodel:
+	elements+=projection_name elements+=projection_component elements+=layer_specification
+	elements+=description (elements+=MainElement)*
+;
+
+MainElement:
+	capability | category | service_group |
+	include_fragment | override | overtake | singleton_set_definition | entity_set_definition | {MainElement} REGION_COMMENT | enumeration_definition |
+	user_filter_definition | action_definition | function_definition | complextype_definition | 
+	( abstract_def )? virtual_definition=virtual_definition | datasource_definition | summary_definition |
+	( abstract_def )? query_definition=query_definition
+	
+	/* |
+	singleton_set_definition | EntitySetDefinition | datasource_definition | summary_definition |
+	( AbstractDef )? query_definition | ( AbstractDef )? virtual_definition | enumeration_definition |
+	complextype_definition | function_definition | action_definition | user_filter_definition )* */
+;
+
+//Domainmodel
+projection_name
+   : "projection" ModelName=ID ';'
+   ;
+
+projection_component
+   : 'component' ComponentName=ID ';'
+   ;
+
+layer_specification
+   : 'layer' LayerName=ID ';'
+   ;
+
+description
+   : 'description' text=STRING ';'
+   ;
+
+
+//MainElement
+capability
+   : 'capability' alt=( 'Online' | 'Offline' ) ';'
+   ;
+
+
+category
+   : 'category' alt=( 'Integration' | 'ExternalB2B' | 'Users' ) ';'
+   ;
+
+
+service_group
+   : 'servicegroup' alt=( 'Mobility' | 'Reporting' ) ';'
+   ;
+
+
+include_fragment
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'include' 'fragment' FragmentToIncludeName=ID ';'
+   ;
+
+override
+   : annotation='@Override'
+   ;
+
+
+overtake
+   : '@Overtake' LayerName=ID
+   ;
+
+//entity_set_definition
+entity_set_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'entityset' EntitySetName=identifier 'for' ReferenceObjectName=ID ( '{' ( alt=where_definition | alt=offline_filter_definition | alt=filtering_context_list_definition )+ '}' | ';' )
+   ; 
+
+where_definition
+   : 'where' '=' name=STRING ';'
+   ;
+
+filtering_context_list_definition
+   : 'context' ContextName=ID '(' AttributeName=ID ')' ( ',' ContextName2=ID '(' AttributeName2=ID ')' )* ';'
+   ;
+
+offline_filter_definition
+   : keyword='offlinefilter' '=' '[' /*offline_expression*/ ']' ';'
+   ;
+
+
+//singleton_set_definition
+singleton_set_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'singleton' singleton_set_definition_singleton_name=ID ( 'for' singleton_set_definition_reference_object_name=ID '{' alt=where_definition '}' | '{' ( alt=from_definition | alt=where_definition | alt=keys_definition | alt=dataitem_definition | alt=computeditem_definition | alt=action_definition | alt=function_definition | alt=array_definition | alt=aggregate_definition )* '}' )
+   ;
+
+computeditem_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'computed' computeditem_definition_dataitem_name=ID type_definition=type_definition '{' ( alt=label_definition | alt=compute_definition )+ '}'
+   ;
+
+compute_definition
+   : 'compute' '=' compute_expression=compute_expression ';'
+   ;
+
+compute_expression
+   : ( compute_expression_atom=compute_expression_atom | ( 'lowercase' | 'uppercase' ) '(' compute_expression=compute_expression ')' | 'substr' '(' compute_expression=compute_expression ',' compute_expression_atom=compute_expression_atom ',' compute_expression_atom=compute_expression_atom ')' | ( 'formatDate' | 'formatNumber' ) '(' compute_expression=compute_expression ',' compute_expression_atom=compute_expression_atom ')' | '(' compute_expression=compute_expression ')' ) ( ( '+' | '-' | '*' | '/' | '||' ) compute_expression=compute_expression )?
+   ;
+
+compute_expression_atom
+   : ( 'count' '(' compute_expression_atom_datasource_ref=ID ( ',' '[' projection_flag_condition=projection_flag_condition ']' )? ')' | ( 'sum' | 'max' | 'min' | 'avg' ) '(' compute_expression_atom_datasource_ref=ID '.' compute_expression_atom_dataitem_ref=ID ( ',' '[' projection_flag_condition=projection_flag_condition ']' )? ')' | 'nvl' '(' ( compute_expression_atom_datasource_ref=ID '.' )? compute_expression_atom_dataitem_ref=ID ',' compute_expression_atom_value=compute_expression_atom_value ')' | ( compute_expression_atom_datasource_ref=ID '.' )? compute_expression_atom_dataitem_ref=ID | compute_expression_atom_value=compute_expression_atom_value )
+   ;
+
+compute_expression_atom_value
+   : ( alt=STRING | {compute_expression_atom_value} INT )
+   ;
+
+
+//datasource_definition
+datasource_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'entity' datasource_definition_datasource_name=ID ( 'using' datasource_definition_reference_object_name=ID )? ( 'extends' datasource_definition_extends_name=ID )? '{' ( alt=warnings_enabled_flag | alt=key_fetch_on_create_flag | alt=keys_definition | alt=luname_definition | alt=keyref_definition| alt=dependencies_definition | alt=exec_definition | alt=from_definition | alt=validate_action_reference | alt=where_definition | alt=statemachine_definition | alt=use_attributes_definition | alt=exclude_attributes_definition | alt=dataitem_definition | alt=computeditem_definition | alt=tag_definition | alt=function_definition | alt=action_definition | alt=crud_definition | alt=array_definition | alt=aggregate_definition | alt=transaction_group_definition | alt=sync_policy_definition | alt=change_detection_definition | alt=exclude_from_config_flag_setting )* '}'
+   ;
+
+key_fetch_on_create_flag
+   : 'keyfetchoncreate' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+luname_definition
+   : 'luname' '=' string=STRING ';'
+   ;
+
+keyref_definition
+   : 'keyref' '=' string=STRING ';'
+   ;
+
+validate_action_reference
+   : 'validate' 'action' validate_action_reference_action_ref=ID ';'
+   ;
+
+statemachine_definition
+   : 'statemachine' '{' ( state_event_definition=state_event_definition )* '}'
+   ;
+   
+state_event_definition
+   : 'event' state_event_definition_event_name=ID ( ';' | '{' ( alt=label_definition | alt=parameter_definition | alt=available_flag_setting | alt=offline_sync_policy_definition )* '}' )
+   ;
+
+use_attributes_definition
+   : 'use' 'attributes' '=' attribute_reference=ID ( ',' attribute_reference2=ID )* ';'
+   ;
+
+exclude_attributes_definition
+   : 'exclude' 'attributes' '=' attribute_reference=ID ( ',' attribute_reference2=ID )* ';'
+   ;
+
+tag_definition
+   : 'tag' tag_definition_tag_name=ID '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference2=dataitem_reference )* )? ')' ( alt=( tag_union_definition | tag_minus_definition | tag_intersect_definition ) )* ';'
+   ;
+
+tag_union_definition
+   : 'union' '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference=dataitem_reference)* )? ')'
+   ;
+
+tag_minus_definition
+   : 'minus' '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference=dataitem_reference )* )? ')'
+   ;
+
+tag_intersect_definition
+   : 'intersect' '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference=dataitem_reference )* )? ')'
+   ;
+
+sync_policy_definition
+   : 'syncpolicy' ( push_sync_policy_definition | grouped_push_sync_policy_definition | batch_sync_policy_definition | incoming_sync_policy_definition | client_cache_sync_policy_definition | online_only_sync_policy_definition )
+   ;
+
+
+batch_sync_policy_definition
+   : 'Batch' '{' sync_schedule_definition ( sync_group_definition=sync_group_definition )? ( filter_on_entity_setting=filter_on_entity_setting )? '}'
+   ;
+
+sync_schedule_definition
+   : 'syncschedule' '=' ( string=STRING | batch_sync_hourly_policy | batch_sync_daily_policy | batch_sync_weekly_policy | batch_sync_monthly_policy | batch_sync_on_change_policy ) ';'
+   ;
+
+
+batch_sync_hourly_policy
+   : 'every' batch_sync_hourly_policy_time=TIME
+   ;
+
+batch_sync_daily_policy
+   : 'daily' 'at' batch_sync_daily_policy_time=TIME
+   ;
+
+batch_sync_weekly_policy
+   : 'weekly' 'on' ( ( batch_sync_weekday=batch_sync_weekday | '(' batch_sync_weekday=batch_sync_weekday ( ',' batch_sync_weekday=batch_sync_weekday )+ ) ( sync_group_definition=sync_group_definition )? ')' ) 'at' batch_sync_weekly_policy_time=TIME
+   ;
+
+batch_sync_weekday
+   : alt=( 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun' )
+   ;
+
+batch_sync_monthly_policy
+   : 'monthly' 'on' 'day' INT 'at' batch_sync_monthly_policy_time=TIME
+   ;
+
+batch_sync_on_change_policy
+   : 'on' 'change'
+   ;
+
+
+sync_group_definition
+   : 'syncgroup' '=' sync_group_definition_value=STRING ';'
+   ;
+filter_on_entity_setting
+   : 'filteronentity' '=' filter_on_entity_setting_reference_object_name=ID ';'
+   ;
+
+
+incoming_sync_policy_definition
+   : keyword='Incoming' ';'
+   ;
+
+client_cache_sync_policy_definition
+   : 'ClientCache' '{' cache_invalidation_definition=cache_invalidation_definition '}'
+   ;
+
+cache_invalidation_definition
+   : 'cacheinvalidation' '=' ( cache_invalidation_after=cache_invalidation_after | 'never' | 'daily' | 'weekly' ) ';'
+   ;
+
+cache_invalidation_after
+   : keyword='after' INT ( 'min' | 'hour' | 'day' )
+   ;
+
+online_only_sync_policy_definition
+   : keyword='OnlineOnly' ';'
+   ;
+
+
+push_sync_policy_definition
+   : 'Push' '{' sync_schedule_definition guard_condition_definition=guard_condition_definition ownership_query_definition=ownership_query_definition ( exclude_details_setting=exclude_details_setting )? ( sync_group_definition=sync_group_definition )? ( filter_on_entity_setting=filter_on_entity_setting )? '}'
+   ;
+
+guard_condition_definition
+   : 'guardcondition' '=' string=STRING ';'
+   ;
+
+ownership_query_definition
+   : 'ownershipquery' '=' string=STRING ';'
+   ;
+
+exclude_details_setting
+   : 'excludedetails' '=' exclude_details_entity=ID ( ',' exclude_details_entity2=ID )* ';'
+   ;
+
+
+grouped_push_sync_policy_definition
+   : 'GroupedPush' '{' ( sync_schedule_definition )? ( user_filter_reference=user_filter_reference ( language_dependent_definition=language_dependent_definition )? )? ( sync_group_definition=sync_group_definition )? '}'
+   ;
+
+user_filter_reference
+   : 'userfilter' user_filter_reference_user_filter_ref=ID '(' ( ( user_filter_attr_name=ID ',' )* user_filter_attr_name=ID )? ')' ';'
+   ;
+
+language_dependent_definition
+   : 'languagedependent' language_dependent_definition_language_dependent_type ';'
+   ;
+
+language_dependent_definition_language_dependent_type
+   : ( alt='True' | alt='False' )
+   ;
+
+
+change_detection_definition
+   : 'changedetection' '{' ( trigger=trigger )+ '}'
+   ;
+
+trigger
+   : 'trigger' 'on' trigger_table_name=ID '{' trigger_attributes=trigger_attributes ( objkey_column=objkey_column | target_table=target_table objkey_mapping=objkey_mapping ( mapping_arguments=mapping_arguments )? ) ( guard_function=guard_function )? '}'
+   ;
+
+trigger_attributes
+   : 'attributes' '{' alt=( trigger_attribute | combine_attribute )+ '}'
+   ;
+
+trigger_attribute
+   : 'attribute' trigger_attribute_attribute_name=ID ( ';' | '{' trigger_attribute_table_columns=trigger_attribute_table_columns '}' )
+   ;
+
+combine_attribute
+   : 'combine' '{' ( trigger_attribute=trigger_attribute )+ '}'
+   ;
+
+trigger_attribute_table_columns
+   : 'tablecolumns' ( trigger_attribute_table_column=ID ',' )* trigger_attribute_table_column=ID ';'
+   ;
+
+
+mapping_arguments
+   : 'arguments' '{' ( mapping_argument=ID ',' )* mapping_argument=ID '}'
+   ;
+
+objkey_column
+   : 'objkey' objkey_column_objkey_column_name=ID ';'
+   ;
+
+target_table
+   : 'targettable' target_table_target_table_name=ID ';'
+   ;
+
+objkey_mapping
+   : 'mapping' string=STRING ';'
+   ;
+
+guard_function
+   : 'guardfunction' guard_function_guard_function_name=ID '(' ( guard_function_argument=ID ',' )* guard_function_argument=ID ')' ';'
+   ;
+
+exclude_from_config_flag_setting
+   : keyword='excludefromconfig' '=' '[' ( 'true' | 'false' ) ']' ';'
+   ;
+
+
+
+//summary_definition
+summary_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'summary' summary_definition_summary_name=ID '{' alt=( keys_definition | luname_definition | keyref_definition | dependencies_definition | from_definition | where_definition | dataitem_definition | computeditem_definition | function_definition | action_definition | array_definition | aggregate_definition )* '}'
+   ;
+
+//query_definition
+query_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'query' query_definition_query_name=ID '{' ( alt=lu_definition | alt=keys_definition | alt=luname_definition | alt=keyref_definition | alt=dependencies_definition | alt=from_definition | alt=where_definition | alt=dataitem_definition | alt=computeditem_definition | alt=function_definition | alt=action_definition | alt=array_definition | alt=aggregate_definition | alt=transaction_group_definition | alt=sync_policy_definition | alt=exclude_from_config_flag_setting )* '}'
+   ;
+
+lu_definition
+   : 'lu' '=' lu_definition_lu_name=ID ';'
+   ;
+
+
+
+
+//enumeration_definition
+enumeration_definition
+   : {enumeration_definition} ( dynamic_component_dependency=dynamic_component_dependency )* 'enumeration' ID ('.' ID)? '{' ( enumeration_type_definition=enumeration_type_definition )? ( exec_definition=exec_definition )? ( enumeration_value_definition=enumeration_value_definition )* '}'
+   ;
+   
+enumeration_type_definition
+   : 'enumerationtype' '=' enumeration_type_definition_enumeration_type ';'
+   ;
+
+enumeration_type_definition_enumeration_type
+   : alt=( 'Standard' | 'EntityState' | 'Custom' | 'Lookup' )
+   ;
+
+enumeration_value_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'value' '=' string=STRING ( ';' | '{' ( 'identifier' '=' string=STRING ';' )? label_definition=label_definition '}' )
+   ;
+
+exec_definition
+   : 'exec' '=' string=STRING ';'
+   ;
+
+label_definition
+   : 'label' '=' string=STRING ';'
+   ;
+
+//user_filter_definition
+user_filter_definition
+   : 'userfilter' user_filter_definition_filter_name=ID '{' view_filter_definition=view_filter_definition user_column_definition=user_column_definition filter_columns_definition=filter_columns_definition ( trigger_on_definition=trigger_on_definition )+ '}'
+   ;
+
+view_filter_definition
+   : 'view' view_filter_definition_view_name=ID ';'
+   ;
+
+user_column_definition
+   : 'usercolumn' user_column_definition_user_column_name=ID ';'
+   ;
+
+filter_columns_definition
+   : 'filtercolumns' '{' ( filter_column_definition=filter_column_definition )+ '}'
+   ;
+
+filter_column_definition
+   : 'filtercolumn' filter_column_definition_filter_column_name=ID '{' ( ( filter_column_operator=filter_column_operator )? null_image=null_image )+ '}'
+   ;
+
+filter_column_operator
+   : 'operator' filter_column_operator_filter_column_operator_name=filter_column_operator_filter_column_operator_name ';'
+   ;
+
+filter_column_operator_filter_column_operator_name
+   : alt=( 'Like' | 'Equal' | 'Lower' | 'LowerOrEqual' | 'Greater' | 'GreaterOrEqual' )
+   ;
+   
+null_image
+   : 'when' null_image_null_image_id=STRING 'allow' null_image_null_match=null_image_null_match ';'
+   ;
+
+null_image_null_match
+   : alt=( 'All' | 'None' | 'Null' )
+   ;
+
+trigger_on_definition
+   : 'trigger' 'on' trigger_on_definition_trigger_table_name=ID ( ';' | '{' ( trigger_attribute_table_columns=trigger_attribute_table_columns ) '}' )
+   ;
+
+//action_definition
+action_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'action' action_definition_action_name=ID ( type_definition=type_definition )? ( ';' | '{' ( implementation_definition=implementation_definition )? ( dependency_definition=dependency_definition )? ( alt=label_definition | alt=dependencies_definition | alt=mandatory_flag_setting | alt=parameter_definition | alt=available_flag_setting | alt=transaction_group_definition | offline_sync_policy_definition=offline_sync_policy_definition | support_warnings_flag_setting=support_warnings_flag_setting )* '}' )
+   ;
+
+type_definition
+   : ( 'Identity' | 'Alpha' | 'Text' | 'Boolean' ( '(' type_definition_true_value=STRING ',' type_definition_false_value=STRING ')' )? | 'Binary' ( '(' type_definition_mime_type=STRING ')' )? | 'Integer' | 'Number' ( '(' type_definition_precision=INT ( ',' type_definition_scale=INT)? ')' )? | 'Date' | 'Time' | 'Timestamp' | 'LongText' ( '(' type_definition_mime_type=STRING')' )? | 'Stream' ( '(' type_definition_mime_type=STRING ')' )? | 'GUID' | 'Structure' '(' type_definition_structure_ref=ID ')' | 'Entity' '(' type_definition_entity_ref=ID ')' | 'Enumeration' '(' type_definition_enumeration_ref=ID ( '.' type_definition_enumeration_subset=ID )? ')' | 'Lookup' '(' type_definition_enumeration_ref=ID ')' | 'List' '<' ( 'Identity' | 'Alpha' | 'Text' | 'Boolean' ( '(' type_definition_true_value=STRING ',' type_definition_false_value=STRING ')' )? | 'Integer' | 'Number' ( '(' type_definition_precision=INT ( ',' type_definition_scale=INT )? ')' )? | 'Date' | 'Time' | 'Timestamp' | 'GUID' | 'Structure' '(' type_definition_structure_ref=ID ')' | 'Entity' '(' type_definition_entity_ref=ID ')' | 'Enumeration' '(' type_definition_enumeration_ref=ID ( '.' type_definition_enumeration_subset=ID )? ')' | 'Lookup' '(' type_definition_enumeration_ref=ID ')' ) '>' )
+   ;
+
+implementation_definition
+   : 'implementation' '=' string=STRING ';'
+   ;
+
+dependency_definition
+   : 'dependencies' '{' ( server_package_reference=server_package_reference )+ '}'
+   ;
+
+server_package_reference
+   : 'serverpackage' string=STRING ';'
+   ;
+   
+dependencies_definition
+   : 'ludependencies' '=' dependency_reference=ID ( ',' dependency_reference2=ID )* ';'
+   ;
+
+mandatory_flag_setting
+   : 'required' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+projection_flag_condition
+   : ( 'not' )? ( projection_flag_condition_atom=projection_flag_condition_atom | '(' projection_flag_condition=projection_flag_condition ')' ) ( ( alt='and' | alt='or' ) projection_flag_condition=projection_flag_condition)?
+   ;
+
+projection_flag_condition_atom
+   : ( alt='true' | alt='false' | projection_flag_condition_atom_dataitem_ref=ID ( ( '=' projection_flag_condition_atom_value=projection_flag_condition_atom_value | '!=' projection_flag_condition_atom_value=projection_flag_condition_atom_value | '>' projection_flag_condition_atom_value=projection_flag_condition_atom_value | '>=' projection_flag_condition_atom_value=projection_flag_condition_atom_value | '<' projection_flag_condition_atom_value=projection_flag_condition_atom_value | '<=' projection_flag_condition_atom_value=projection_flag_condition_atom_value | 'in' '(' projection_flag_condition_atom_value=projection_flag_condition_atom_value ( ',' projection_flag_condition_atom_value=projection_flag_condition_atom_value )* ')' ) )? )
+   ;
+
+projection_flag_condition_atom_value
+   : ( {projection_flag_condition_atom_value} STRING | alt='null' | {projection_flag_condition_atom_value} ID | {projection_flag_condition_atom_value} INT )
+   ;
+
+parameter_definition
+   : 'parameter' parameter_definition_parameter_name=ID type_definition=type_definition ( '{' mandatory_flag_setting=mandatory_flag_setting'}' | ';' )
+   ;
+
+available_flag_setting
+   : 'enabled' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+transaction_group_definition
+   : 'transactiongroup' '=' string=STRING ';'
+   ;
+
+offline_sync_policy_definition
+   : keyword='syncpolicy' ( 'Online' | 'Offline' ) ';'
+   ;
+
+support_warnings_flag_setting
+   : keyword='supportwarnings' '=' '[' ( 'true' | 'false' ) ']' ';'
+   ;
+
+//function definition
+function_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'function' function_definition_function_name=ID type_definition=type_definition ( ';' | '{' ( implementation_definition=implementation_definition )? ( dependency_definition=dependency_definition )? ( alt=label_definition | alt=based_on_entity_set_definition | alt=support_file_info_flag | alt=dependencies_definition | alt=mandatory_flag_setting | alt=parameter_definition | alt=where_definition | alt=from_definition | alt=available_flag_setting |alt= offline_sync_policy_definition | alt=transaction_group_definition | alt=alter_attribute_definition )* '}' )
+   ;
+
+based_on_entity_set_definition
+   : 'basedon' based_on_entity_set_definition_name_entity_set=ID ';'
+   ;
+
+support_file_info_flag
+   : 'supportfileinfo' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+from_definition
+   : 'from' '=' string=STRING ( 'statemachine' )? ';'
+   ;
+
+alter_attribute_definition
+   : 'alterattribute' alter_attribute_definition_dataitem_name=ID ( '{' ( fetch_definition=fetch_definition )+ '}' )
+   ;
+
+fetch_definition
+   : 'fetch' '=' string=STRING ';'
+   ;
+
+
+//complextype_definition
+complextype_definition
+   : 'structure' complextype_definition_complextype_name=ID '{' alt=( dataitem_definition | array_definition | aggregate_definition )+ '}'
+   ;
+
+
+//virtual_definition
+virtual_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'virtual' virtual_definition_virtual_name=ID ( 'using' virtual_definition_reference_object_name=ID )? '{' ( alt=warnings_enabled_flag | alt=keys_definition | alt=dependencies_definition | alt=crud_definition | alt=dataitem_definition | alt=function_definition | alt=action_definition | alt=array_definition | alt=aggregate_definition )* '}'
+   ;
+
+warnings_enabled_flag
+   : 'supportwarnings' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+keys_definition
+   : 'keys' '=' key_reference=key_reference ( ',' key_reference=key_reference )* ( '{' where_definition=where_definition '}' | ';' )
+   ;
+
+crud_definition
+   : 'crud' '=' crud_reference=crud_reference ( ',' crud_reference=crud_reference )* ';'
+   ;
+
+crud_reference
+   : alt=( 'Create' | 'Read' | 'Update' | 'Delete' | 'StateChange' )
+   ;
+
+
+
+
+//dataitem_definition
+dataitem_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'attribute' dataitem_definition_dataitem_name=ID type_definition=type_definition ( ';' | '{' ( alt=label_definition | alt=fetch_definition | alt=enum_lookup_list_flag_setting | alt=default_data_definition | alt=exec_definition | alt=regexp_definition | alt=maxlength_definition | alt=format_definition | alt=mandatory_flag_setting | alt=inline_property_setting | alt=lov_flag_setting | alt=updatable_flag_setting | alt=server_updatable_flag_setting | alt=server_insertable_flag_setting | alt=validation_definition | alt=implementation_definition | alt=implementation_type_definition | alt=stream_file_info_definition )+ '}' )
+   ;
+
+enum_lookup_list_flag_setting
+   : 'multiselect' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+default_data_definition
+   : 'default' '=' string=STRING ';'
+   ;
+
+regexp_definition
+   : 'regexp' '=' string=STRING ';'
+   ;
+
+maxlength_definition
+   : keyword='maxlength' '=' INT ';'
+   ;
+
+format_definition
+   : 'format' '=' alt=( 'uppercase' | 'lowercase' | 'percentage' | 'ifscurrency' | 'decimal' | 'longtime' ) ';'
+   ;
+
+inline_property_setting
+   : 'inlined' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+lov_flag_setting
+   : keyword='lovcolumn' '=' '[' ( 'true' | 'false' ) ']' ';'
+   ;
+
+updatable_flag_setting
+   : keyword='editable' '=' '[' ( 'true' | 'false' | 'ETag' '=' 'null' | 'ETag' '!=' 'null' ) ']' ';'
+   ;
+
+server_updatable_flag_setting
+   : keyword='updatable' '=' '[' ( 'true' | 'false' ) ']' ';'
+   ;
+
+server_insertable_flag_setting
+   : keyword='insertable' '=' '[' ( 'true' | 'false' ) ']' ';'
+   ;
+
+validation_definition
+   : 'validate' '[' projection_flag_condition=projection_flag_condition ']' 'message' string=STRING ';'
+   ;
+
+implementation_type_definition
+   : 'implementationtype' '=' string=STRING ';'
+   ;
+
+stream_file_info_definition
+   : {stream_file_info_definition} 'fileinfo' '{' ( stream_file_name_attribute=stream_file_name_attribute )? ( stream_mime_type_attribute=stream_mime_type_attribute )? ( stream_attachment_attribute=stream_attachment_attribute )? '}'
+   ;
+
+stream_file_name_attribute
+   : 'filename' dataitem_reference=dataitem_reference ';'
+   ;
+
+stream_mime_type_attribute
+   : 'mimetype' dataitem_reference=dataitem_reference ';'
+   ;
+
+stream_attachment_attribute
+   : 'attachment' '=' '[' projection_flag_condition=projection_flag_condition ']' ';'
+   ;
+
+dataitem_reference
+   : dataitem_reference_item_name=ID
+   ;
+
+
+
+//aggregate_definition
+aggregate_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'reference' aggregate_definition_aggregate_name=ID '(' ( key_reference=key_reference ( ',' key_reference2=key_reference )* )? ')' ( ( 'dynamic' '(' dataitem_reference=dataitem_reference ')' ( 'parent' '(' ( dataitem_reference2=dataitem_reference ( ',' dataitem_reference3=dataitem_reference )* )? ')' )? )? ';' | to_reference_definition=to_reference_definition ( 'using' to_function_definition=to_function_definition )? ( '{' ( label_definition=label_definition | prefetch_definition=prefetch_definition | copy_definition=copy_definition | where_definition=where_definition ( where_filter_definition=where_filter_definition )? | aggregate_list_flag_setting=aggregate_list_flag_setting | alt=aggregate_check_flag_setting | aggregate_wildcard_definition=aggregate_wildcard_definition )+ '}' | ';' ) )
+   ;
+
+key_reference
+   : key_reference_key_name=ID
+   ;
+
+to_reference_definition
+   : 'to' to_reference_definition_reference_object_name=ID '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference2=dataitem_reference )* )? ')'
+   ;
+
+to_function_definition
+   : to_function_definition_reference_object_name=ID '(' ( dataitem_reference=dataitem_reference ( ',' dataitem_reference2=dataitem_reference )* )? ')'
+   ;
+
+prefetch_definition
+   : 'prefetch' dataitem_reference=dataitem_reference 'as' prefetch_definition_prefetch_name=ID ( '{' label_definition=label_definition '}' | ';' )
+   ;
+
+copy_definition
+   : 'copy' dataitem_reference=dataitem_reference 'to' copy_definition_copy_name=ID ';'
+   ;
+
+where_filter_definition
+   : 'filter' '=' string=STRING ';'
+   ;
+
+aggregate_list_flag_setting
+   : 'multireference' '=' '(' projection_flag_condition=projection_flag_condition ')' ';'
+   ;
+
+aggregate_check_flag_setting
+   : keyword='existcheck' '=' '(' 'false' ')' ';'
+   ;
+
+aggregate_wildcard_definition
+   : 'wildcard' '=' aggregate_wildcard_definition_wildcard_token=STRING ';'
+   ;
+
+
+//array_definition
+array_definition
+   : ( dynamic_component_dependency=dynamic_component_dependency )* 'array' array_definition_array_name=ID '(' ( key_reference=key_reference( ',' key_reference2=key_reference )* )? ')' to_reference_definition=to_reference_definition ( '{' ( where_definition=where_definition | filtering_context_definition=filtering_context_definition | offline_filter_definition=offline_filter_definition )+ '}' | ';' )
+   ;
+
+filtering_context_definition
+   : 'context' filtering_context_property ';'
+   ;
+
+filtering_context_property
+   : filtering_context_property_context_name=ID '(' filtering_context_property_attribute_name=ID ')'
+   ;
+
+
+
+
+
+
+
+
+abstract_def
+   : annotation='@Abstract'
+   ;
+
+dynamic_component_dependency
+   : '@DynamicComponentDependency' ComponentName=ID
+   ;
+
+terminal REGION_COMMENT
+   : ( '---' ('-')+ (' ') (('A'..'Z'|'0'..'9')+ (' '))+ ('-')+ )
+   ;
+
+terminal TIME
+   : ( ('0'..'9')+ ':' ('0'..'9')+ )
+   ;
+   
+identifier
+   : Name=(ID
+   | 'All'
+   | 'Alpha'
+   | 'Batch'
+   | 'Binary'
+   | 'Boolean'
+   | 'ClientCache'
+   | 'Create'
+   | 'Custom'
+   | 'Date'
+   | 'Delete'
+   | 'ETag'
+   | 'Entity'
+   | 'EntityState'
+   | 'Enumeration'
+   | 'Equal'
+   | 'ExternalB2B'
+   | 'False'
+   | 'Fri'
+   | 'GUID'
+   | 'Greater'
+   | 'GreaterOrEqual'
+   | 'GroupedPush'
+   | 'Identity'
+   | 'Incoming'
+   | 'Integer'
+   | 'Integration'
+   | 'Like'
+   | 'List'
+   | 'LongText'
+   | 'Lookup'
+   | 'Lower'
+   | 'LowerOrEqual'
+   | 'Mobility'
+   | 'Mon'
+   | 'None'
+   | 'Null'
+   | 'Number'
+   | 'Offline'
+   | 'Online'
+   | 'OnlineOnly'
+   | 'Push'
+   | 'Read'
+   | 'Reporting'
+   | 'Sat'
+   | 'Standard'
+   | 'StateChange'
+   | 'Stream'
+   | 'Structure'
+   | 'Sun'
+   | 'Text'
+   | 'Thu'
+   | 'Time'
+   | 'Timestamp'
+   | 'True'
+   | 'Tue'
+   | 'Update'
+   | 'Users'
+   | 'Wed')
+   ;
